@@ -23,6 +23,7 @@ namespace Unity.VideoHelper
         private RawImage image;
 
         private UnityEvent<float> timelinePositionChanged = new FloatEvent();
+        private UnityEvent startedPlaying = new UnityEvent();
 
         #endregion
 
@@ -44,13 +45,40 @@ namespace Unity.VideoHelper
             get { return videoPlayer.frameCount / (ulong)videoPlayer.frameRate; }
         }
 
-        public double Time { get { return videoPlayer.time; } }
+        /// <summary>
+        /// Gets the current time in seconds.
+        /// </summary>
+        public double Time
+        {
+            get { return videoPlayer.time; }
+        }
 
-        public bool IsPrepared { get { return videoPlayer.isPrepared; } }
+        /// <summary>
+        /// Gets whether the player prepared buffer for smooth playback.
+        /// </summary>
+        public bool IsPrepared
+        {
+            get { return videoPlayer.isPrepared; }
+        }
 
-        public bool IsPlaying { get { return videoPlayer.isPlaying; } }
+        /// <summary>
+        /// Gets whether the video is playing.
+        /// </summary>
+        public bool IsPlaying
+        {
+            get { return videoPlayer.isPlaying; }
+        }
+
+        public float Volume
+        {
+            get { return audioSource.volume; }
+            set { audioSource.volume = value; }
+        }
+
 
         public UnityEvent<float> TimelinePositionChanged { get { return timelinePositionChanged; } }
+
+        public UnityEvent StartedPlaying { get { return startedPlaying; } }
 
         #endregion
 
@@ -100,14 +128,14 @@ namespace Unity.VideoHelper
 
         #region Methods
 
-        public void PlayFromUrl(string url)
+        public void PrepareForUrl(string url)
         {
             videoPlayer.source = VideoSource.Url;
             videoPlayer.url = url;
             videoPlayer.Prepare();
         }
 
-        public void PlayFromFile(string path)
+        public void PrepareForFile(string path)
         {
             videoPlayer.source = VideoSource.VideoClip;
             throw new NotImplementedException();
@@ -140,6 +168,7 @@ namespace Unity.VideoHelper
         private void OnStarted(VideoPlayer source)
         {
             Debug.Log("Started video");
+            startedPlaying.Invoke();
         }
 
         private void OnSeekCompleted(VideoPlayer source)
