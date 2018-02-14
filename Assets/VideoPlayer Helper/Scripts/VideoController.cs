@@ -6,11 +6,8 @@ using UnityEngine.Video;
 
 namespace Unity.VideoHelper
 {
-    public class FloatEvent : UnityEvent<float> { }
-
     public class VideoController : MonoBehaviour
     {
-
         #region Fields
 
         [SerializeField]
@@ -20,7 +17,7 @@ namespace Unity.VideoHelper
         private AudioSource audioSource;
 
         [SerializeField]
-        private RawImage image;
+        private RawImage output;
 
         private UnityEvent<float> timelinePositionChanged = new FloatEvent();
         private UnityEvent startedPlaying = new UnityEvent();
@@ -69,6 +66,9 @@ namespace Unity.VideoHelper
             get { return videoPlayer.isPlaying; }
         }
 
+        /// <summary>
+        /// Gets or sets the volume of the audio source.
+        /// </summary>
         public float Volume
         {
             get { return audioSource.volume; }
@@ -96,15 +96,15 @@ namespace Unity.VideoHelper
 
         private void Start()
         {
-            if (image == null)
-                image = gameObject.AddComponent<RawImage>();
+            if (output == null)
+                output = GetOrAddComponent<RawImage>();
 
             if (audioSource == null)
-                audioSource = gameObject.AddComponent<AudioSource>();
+                audioSource = GetOrAddComponent<AudioSource>();
 
             if (videoPlayer == null)
             {
-                videoPlayer = gameObject.AddComponent<VideoPlayer>();
+                videoPlayer = GetOrAddComponent<VideoPlayer>();
                 SubscribeToVideoPlayerEvents();
             }
 
@@ -128,6 +128,10 @@ namespace Unity.VideoHelper
 
         #region Methods
 
+        /// <summary>
+        /// Prepares and plays the video from the URL.
+        /// </summary>
+        /// <param name="url">The video URL.</param>
         public void PrepareForUrl(string url)
         {
             videoPlayer.source = VideoSource.Url;
@@ -155,6 +159,10 @@ namespace Unity.VideoHelper
             videoPlayer.Pause();
         }
 
+        /// <summary>
+        /// Jumps to the specified time in the video.
+        /// </summary>
+        /// <param name="time">The normalized time.</param>
         public void Seek(float time)
         {
             time = Mathf.Clamp(time, 0, 1);
@@ -164,6 +172,15 @@ namespace Unity.VideoHelper
         #endregion
 
         #region Private Methods
+
+        private TComponent GetOrAddComponent<TComponent>() where TComponent : Component
+        {
+            var comp = GetComponent<TComponent>();
+            if (comp == null)
+                comp = gameObject.AddComponent<TComponent>();
+
+            return comp;
+        }
 
         private void OnStarted(VideoPlayer source)
         {
@@ -180,7 +197,7 @@ namespace Unity.VideoHelper
         {
             Debug.Log("Prepare completed");
 
-            image.texture = videoPlayer.texture;
+            output.texture = videoPlayer.texture;
             Play();
         }
 

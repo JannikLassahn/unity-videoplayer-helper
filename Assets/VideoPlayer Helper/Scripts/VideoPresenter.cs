@@ -34,7 +34,7 @@ namespace Unity.VideoHelper
 
         [Header("Controls")]
 
-        public Slider Timeline;
+        public Timeline Timeline;
         public Slider Volume;
         public Image PlayPause;
         public Image MuteUnmute;
@@ -79,36 +79,14 @@ namespace Unity.VideoHelper
             controller.TimelinePositionChanged.AddListener(OnTimeLinePositionChanged);
             controller.StartedPlaying.AddListener(OnStartedPlaying);
 
-            Volume.onValueChanged.AddListener(OnVolumeChanged);
+            Volume.onValueChanged
+                .AddListener(OnVolumeChanged);
 
-            PlayPause.gameObject.AddComponent<ClickRouter>().OnClick.AddListener(() =>
-            {
-                if (controller.IsPlaying)
-                {
-                    controller.Pause();
-                    PlayPause.sprite = Play;
-                }
-                else
-                {
-                    controller.Play();
-                    PlayPause.sprite = Pause;
-                }
-            });
+            PlayPause.gameObject.AddComponent<ClickRouter>()
+                .OnClick.AddListener(OnIsPlayingChanged);
 
-            SmallFullscreen.gameObject.AddComponent<ClickRouter>().OnClick.AddListener(() =>
-            {
-                if(isFullscreen)
-                {
-                    SmallFullscreen.sprite = Normal;
-                }
-                else
-                {
-                    SmallFullscreen.sprite = Fullscreen;
-                }
-
-                isFullscreen = !isFullscreen;
-                Screen.fullScreen = isFullscreen;
-            });
+            SmallFullscreen.gameObject.AddComponent<ClickRouter>()
+                .OnClick.AddListener(OnIsFullscreenChanged);
 
             Array.Sort(Volumes, (v1, v2) =>
             {
@@ -121,6 +99,35 @@ namespace Unity.VideoHelper
             });
         }
 
+        private void OnIsPlayingChanged()
+        {
+            if (controller.IsPlaying)
+            {
+                controller.Pause();
+                PlayPause.sprite = Play;
+            }
+            else
+            {
+                controller.Play();
+                PlayPause.sprite = Pause;
+            }
+        }
+
+        private void OnIsFullscreenChanged()
+        {
+            if (isFullscreen)
+            {
+                SmallFullscreen.sprite = Normal;
+            }
+            else
+            {
+                SmallFullscreen.sprite = Fullscreen;
+            }
+
+            isFullscreen = !isFullscreen;
+            Screen.fullScreen = isFullscreen;
+        }
+
         private void OnStartedPlaying()
         {
             Duration.text = PrettyTimeFormat(TimeSpan.FromSeconds(controller.Duration));
@@ -128,13 +135,8 @@ namespace Unity.VideoHelper
 
         private void OnTimeLinePositionChanged(float position)
         {
-            Timeline.value = position;
+            Timeline.Position = position;
             Current.text = PrettyTimeFormat(TimeSpan.FromSeconds(controller.Time));
-        }
-
-        private void OnTimelineValueChanged(float time)
-        {
-            controller.Seek(time);
         }
 
         private void OnVolumeChanged(float volume)
@@ -152,7 +154,6 @@ namespace Unity.VideoHelper
                 }
             }
         }
-
 
         private string PrettyTimeFormat(TimeSpan time)
         {
