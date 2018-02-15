@@ -42,6 +42,12 @@ namespace Unity.VideoHelper
         public Text Current;
         public Text Duration;
 
+        [Header("Input")]
+
+        public KeyCode FullscreenKey = KeyCode.F;
+        public KeyCode WindowedKey = KeyCode.Escape;
+        public KeyCode TogglePlayKey = KeyCode.Space;
+
         [Header("Content")]
 
         public Sprite Play;
@@ -99,6 +105,33 @@ namespace Unity.VideoHelper
             });
         }
 
+        private void Update()
+        {
+            CheckKeys();            
+        }
+
+        #endregion
+
+        #region Private methods
+
+        private void CheckKeys()
+        {
+            if (Input.GetKeyDown(FullscreenKey))
+            {
+                isFullscreen = true;
+                OnIsFullscreenChanged();
+            }
+            if (Input.GetKeyDown(WindowedKey))
+            {
+                isFullscreen = false;
+                OnIsFullscreenChanged();
+            }
+            if (Input.GetKeyDown(TogglePlayKey))
+            {
+                OnIsPlayingChanged();
+            }
+        }
+
         private void OnIsPlayingChanged()
         {
             if (controller.IsPlaying)
@@ -125,7 +158,7 @@ namespace Unity.VideoHelper
             }
 
             isFullscreen = !isFullscreen;
-            Screen.fullScreen = isFullscreen;
+            //Screen.fullScreen = isFullscreen;
         }
 
         private void OnStartedPlaying()
@@ -164,8 +197,6 @@ namespace Unity.VideoHelper
         }
 
         #endregion
-
     }
-
 }
 

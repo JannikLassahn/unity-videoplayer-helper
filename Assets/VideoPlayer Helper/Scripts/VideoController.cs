@@ -11,13 +11,15 @@ namespace Unity.VideoHelper
         #region Fields
 
         [SerializeField]
+        private RawImage output;
+
+        [Header("Optional")]
+
+        [SerializeField]
         private VideoPlayer videoPlayer;
 
         [SerializeField]
         private AudioSource audioSource;
-
-        [SerializeField]
-        private RawImage output;
 
         private UnityEvent<float> timelinePositionChanged = new FloatEvent();
         private UnityEvent startedPlaying = new UnityEvent();
@@ -110,10 +112,6 @@ namespace Unity.VideoHelper
 
             videoPlayer.playOnAwake = false;
             audioSource.playOnAwake = false;
-
-            videoPlayer.audioOutputMode = VideoAudioOutputMode.AudioSource;
-            videoPlayer.EnableAudioTrack(0, true);
-            videoPlayer.SetTargetAudioSource(0, audioSource);
         }
 
         private void Update()
@@ -148,10 +146,12 @@ namespace Unity.VideoHelper
         public void Play()
         {
             if (!IsPrepared)
+            {
+                videoPlayer.Prepare();
                 return;
+            }
 
             videoPlayer.Play();
-            audioSource.Play();
         }
 
         public void Pause()
@@ -198,6 +198,19 @@ namespace Unity.VideoHelper
             Debug.Log("Prepare completed");
 
             output.texture = videoPlayer.texture;
+
+#if UNITY_EDITOR
+            Debug.LogWarning("Depending on your Unity version you might not be able to play audio in the Editor.");
+#endif
+
+            if(videoPlayer.audioTrackCount >= 1)
+            {
+                videoPlayer.audioOutputMode = VideoAudioOutputMode.AudioSource;
+                videoPlayer.controlledAudioTrackCount = 1;
+                videoPlayer.EnableAudioTrack(0, true);
+                videoPlayer.SetTargetAudioSource(0, audioSource);
+            }
+
             Play();
         }
 
