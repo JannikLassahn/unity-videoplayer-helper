@@ -10,7 +10,7 @@ namespace Unity.VideoHelper
     public class FloatEvent : UnityEvent<float> {}
 
     /// <summary>
-    /// 
+    /// A slider-like component specialized in media playback.
     /// </summary>
     public class Timeline : Selectable, IDragHandler
     {
@@ -92,8 +92,17 @@ namespace Unity.VideoHelper
             UpdateVisuals();
         }
 
+#if UNITY_EDITOR
+        protected override void OnValidate()
+        {
+            base.OnValidate();
+            UpdateVisuals();
+        }
+#endif
+
         #endregion
 
+        #region Private methods
 
         private void SetPosition(float newPosition)
         {
@@ -160,15 +169,34 @@ namespace Unity.VideoHelper
             rect.anchorMax = anchorMax;
         }
 
+        private void UpdateProgress(PointerEventData eventData, Camera cam)
+        {
+            RectTransform clickRect = handleContainerRect ?? progressRect;
+            if (clickRect != null && clickRect.rect.size[0] > 0)
+            {
+                Vector2 localCursor;
+                if (!RectTransformUtility.ScreenPointToLocalPointInRectangle(clickRect, eventData.position, cam, out localCursor))
+                    return;
+                localCursor -= clickRect.rect.position;
+
+                Position = Mathf.Clamp01((localCursor - handleOffset)[0] / clickRect.rect.size[0]);
+                OnSeeked.Invoke(Position);
+            }
+        }
+
+        #endregion
+
+        #region IPointerEnter, IPointerExit, IPointerDown, IDragHandler members
+
         public override void OnPointerEnter(PointerEventData eventData)
         {
-            if(handleRect != null)
+            if (handleRect != null)
                 handleRect.gameObject.SetActive(true);
         }
 
         public override void OnPointerExit(PointerEventData eventData)
         {
-            if(handleRect != null)
+            if (handleRect != null)
                 handleRect.gameObject.SetActive(false);
         }
 
@@ -189,33 +217,13 @@ namespace Unity.VideoHelper
             }
         }
 
-        private void UpdateProgress(PointerEventData eventData, Camera cam)
-        {
-            RectTransform clickRect = handleContainerRect ?? progressRect;
-            if (clickRect != null && clickRect.rect.size[0] > 0)
-            {
-                Vector2 localCursor;
-                if (!RectTransformUtility.ScreenPointToLocalPointInRectangle(clickRect, eventData.position, cam, out localCursor))
-                    return;
-                localCursor -= clickRect.rect.position;
-
-                Position = Mathf.Clamp01((localCursor - handleOffset)[0] / clickRect.rect.size[0]);
-                OnSeeked.Invoke(Position);
-            }
-        }
-
         public virtual void OnDrag(PointerEventData eventData)
         {
             UpdateProgress(eventData, eventData.pressEventCamera);
         }
 
-#if UNITY_EDITOR
-        protected override void OnValidate()
-        {
-            base.OnValidate();
-            UpdateVisuals();
-        }
-#endif
+        #endregion
+
     }
 
 }

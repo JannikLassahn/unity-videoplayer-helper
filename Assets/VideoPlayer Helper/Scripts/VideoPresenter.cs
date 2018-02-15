@@ -26,7 +26,6 @@ namespace Unity.VideoHelper
         #region Private Fields
 
         private VideoController controller;
-        private bool isFullscreen;
 
         #endregion
 
@@ -89,10 +88,10 @@ namespace Unity.VideoHelper
                 .AddListener(OnVolumeChanged);
 
             PlayPause.gameObject.AddComponent<ClickRouter>()
-                .OnClick.AddListener(OnIsPlayingChanged);
+                .OnClick.AddListener(ToggleIsPlaying);
 
             SmallFullscreen.gameObject.AddComponent<ClickRouter>()
-                .OnClick.AddListener(OnIsFullscreenChanged);
+                .OnClick.AddListener(ToggleFullscreen);
 
             Array.Sort(Volumes, (v1, v2) =>
             {
@@ -118,21 +117,19 @@ namespace Unity.VideoHelper
         {
             if (Input.GetKeyDown(FullscreenKey))
             {
-                isFullscreen = true;
-                OnIsFullscreenChanged();
+                ScreenSizeHelper.GoFullscreen(gameObject.transform as RectTransform);
             }
             if (Input.GetKeyDown(WindowedKey))
             {
-                isFullscreen = false;
-                OnIsFullscreenChanged();
+                ScreenSizeHelper.GoWindowed();
             }
             if (Input.GetKeyDown(TogglePlayKey))
             {
-                OnIsPlayingChanged();
+                ToggleIsPlaying();
             }
         }
 
-        private void OnIsPlayingChanged()
+        private void ToggleIsPlaying()
         {
             if (controller.IsPlaying)
             {
@@ -144,21 +141,6 @@ namespace Unity.VideoHelper
                 controller.Play();
                 PlayPause.sprite = Pause;
             }
-        }
-
-        private void OnIsFullscreenChanged()
-        {
-            if (isFullscreen)
-            {
-                SmallFullscreen.sprite = Normal;
-            }
-            else
-            {
-                SmallFullscreen.sprite = Fullscreen;
-            }
-
-            isFullscreen = !isFullscreen;
-            //Screen.fullScreen = isFullscreen;
         }
 
         private void OnStartedPlaying()
@@ -186,6 +168,14 @@ namespace Unity.VideoHelper
                     MuteUnmute.sprite = current.Sprite;
                 }
             }
+        }
+
+        private void ToggleFullscreen()
+        {
+            if (ScreenSizeHelper.IsFullscreen)
+                ScreenSizeHelper.GoWindowed();
+            else
+                ScreenSizeHelper.GoFullscreen(gameObject.transform as RectTransform);
         }
 
         private string PrettyTimeFormat(TimeSpan time)
