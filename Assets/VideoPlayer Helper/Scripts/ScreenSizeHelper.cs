@@ -13,9 +13,12 @@ namespace Unity.VideoHelper
         private static GameObject fullscreenCanvas;
         private static RectTransform target, targetParent;
 
+        private static bool IsAlwaysFullscreen;
+
         #endregion
 
         #region Properties
+
         public static bool IsFullscreen
         {
             get { return fullscreenCanvas != null && fullscreenCanvas.activeSelf; }
@@ -47,6 +50,9 @@ namespace Unity.VideoHelper
             target.anchorMin = target.offsetMin = Vector2.zero;
             target.anchorMax = target.offsetMax = Vector2.one;
             target.localScale = Vector3.one;
+
+            IsAlwaysFullscreen = Screen.fullScreen;
+            Screen.fullScreen = true;
         }
 
         public static void GoWindowed()
@@ -60,6 +66,8 @@ namespace Unity.VideoHelper
             target.localScale = scale;
 
             fullscreenCanvas.SetActive(false);
+
+            Screen.fullScreen = IsAlwaysFullscreen;
         }
 
         #endregion  

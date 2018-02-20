@@ -1,4 +1,9 @@
-﻿using System;
+﻿#if DEBUG
+#define VIDEOPLAYER_DEBUG
+#endif
+
+using System;
+using System.IO;
 using UnityEngine;
 using UnityEngine.Events;
 using UnityEngine.UI;
@@ -6,12 +11,16 @@ using UnityEngine.Video;
 
 namespace Unity.VideoHelper
 {
+
     public class VideoController : MonoBehaviour
     {
         #region Fields
 
         [SerializeField]
-        private RawImage output;
+        private RectTransform screen;
+
+        [SerializeField]
+        private bool startAfterPreparation = true;
 
         [Header("Optional")]
 
@@ -21,12 +30,27 @@ namespace Unity.VideoHelper
         [SerializeField]
         private AudioSource audioSource;
 
-        private UnityEvent<float> timelinePositionChanged = new FloatEvent();
-        private UnityEvent startedPlaying = new UnityEvent();
+        [Space(5)]
+        [SerializeField]
+        private UnityEvent onStartedPlaying = new UnityEvent();
+
+        [SerializeField]
+        private UnityEvent onFinishedPlaying = new UnityEvent();
+
+        private RawImage screenOutput;
 
         #endregion
 
         #region Properties
+
+        /// <summary>
+        /// Gets or sets whether to automatically start playing the video after it is prepared.
+        /// </summary>
+        public bool StartAfterPreparation
+        {
+            get { return startAfterPreparation; }
+            set { startAfterPreparation = value; }
+        }
 
         /// <summary>
         /// Gets a value between 0 and 1 that represents the video position.
@@ -47,9 +71,9 @@ namespace Unity.VideoHelper
         /// <summary>
         /// Gets the current time in seconds.
         /// </summary>
-        public double Time
+        public ulong Time
         {
-            get { return videoPlayer.time; }
+            get { return (ulong)videoPlayer.time; }
         }
 
         /// <summary>
@@ -77,10 +101,26 @@ namespace Unity.VideoHelper
             set { audioSource.volume = value; }
         }
 
+        /// <summary>
+        /// Fired when the player started to play.
+        /// </summary>
+        public UnityEvent OnStartedPlaying
+        {
+            get { return onStartedPlaying; }
+        }
 
-        public UnityEvent<float> TimelinePositionChanged { get { return timelinePositionChanged; } }
+        /// <summary>
+        /// Fired when the video is finished.
+        /// </summary>
+        public UnityEvent OnFinishedPlaying
+        {
+            get { return onFinishedPlaying; }
+        }
 
-        public UnityEvent StartedPlaying { get { return startedPlaying; } }
+        internal RectTransform Screen
+        {
+            get { return screen; }
+        }
 
         #endregion
 
@@ -98,8 +138,7 @@ namespace Unity.VideoHelper
 
         private void Start()
         {
-            if (output == null)
-                output = GetOrAddComponent<RawImage>();
+            screenOutput = GetOrAddComponent<RawImage>(screen.gameObject);
 
             if (audioSource == null)
                 audioSource = GetOrAddComponent<AudioSource>();
@@ -114,20 +153,12 @@ namespace Unity.VideoHelper
             audioSource.playOnAwake = false;
         }
 
-        private void Update()
-        {
-            if (!IsPrepared || !IsPlaying)
-                return;
-
-            TimelinePositionChanged.Invoke(NormalizedTime);
-        }
-
         #endregion
 
         #region Methods
 
         /// <summary>
-        /// Prepares and plays the video from the URL.
+        /// Prepares the video player for the URL.
         /// </summary>
         /// <param name="url">The video URL.</param>
         public void PrepareForUrl(string url)
@@ -137,12 +168,20 @@ namespace Unity.VideoHelper
             videoPlayer.Prepare();
         }
 
-        public void PrepareForFile(string path)
+        /// <summary>
+        /// Prepares the player for a video clip.
+        /// </summary>
+        /// <param name="clip">The clip.</param>
+        public void PrepareForClip(VideoClip clip)
         {
             videoPlayer.source = VideoSource.VideoClip;
-            throw new NotImplementedException();
+            videoPlayer.clip = clip;
+            videoPlayer.Prepare();
         }
 
+        /// <summary>
+        /// Plays a prepared video.
+        /// </summary>
         public void Play()
         {
             if (!IsPrepared)
@@ -154,6 +193,9 @@ namespace Unity.VideoHelper
             videoPlayer.Play();
         }
 
+        /// <summary>
+        /// Pauses the player.
+        /// </summary>
         public void Pause()
         {
             videoPlayer.Pause();
@@ -173,69 +215,90 @@ namespace Unity.VideoHelper
 
         #region Private Methods
 
-        private TComponent GetOrAddComponent<TComponent>() where TComponent : Component
+        private TComponent GetOrAddComponent<TComponent>(GameObject target = null) where TComponent : Component
         {
-            var comp = GetComponent<TComponent>();
+            target = target ?? gameObject;
+            var comp = target.GetComponent<TComponent>();
             if (comp == null)
-                comp = gameObject.AddComponent<TComponent>();
+                comp = target.AddComponent<TComponent>();
 
             return comp;
         }
 
         private void OnStarted(VideoPlayer source)
         {
-            Debug.Log("Started video");
-            startedPlaying.Invoke();
+            onStartedPlaying.Invoke();
         }
 
-        private void OnSeekCompleted(VideoPlayer source)
+        private void OnFinished(VideoPlayer source)
         {
-            Debug.Log("Seek completed");
+            onFinishedPlaying.Invoke();
         }
 
         private void OnPrepareCompleted(VideoPlayer source)
         {
-            Debug.Log("Prepare completed");
+            screenOutput.texture = videoPlayer.texture;
 
-            output.texture = videoPlayer.texture;
-
-#if UNITY_EDITOR
-            Debug.LogWarning("Depending on your Unity version you might not be able to play audio in the Editor.");
+#if VIDEOPLAYER_DEBUG
+            Debug.LogWarning("[Video Controller] Depending on your Unity version you might not be able to play audio in the Editor.");
 #endif
 
-            if(videoPlayer.audioTrackCount >= 1)
+            SetupAudio();
+            SetupAspect();
+
+            if (StartAfterPreparation)
+                Play();
+        }
+
+        private void SetupAspect()
+        {
+            var fitter = GetOrAddComponent<AspectRatioFitter>(screen.gameObject);
+            fitter.aspectMode = AspectRatioFitter.AspectMode.FitInParent;
+            fitter.aspectRatio = (float)videoPlayer.texture.width / videoPlayer.texture.height;
+        }
+
+        private void SetupAudio()
+        {
+            if (videoPlayer.audioTrackCount >= 1)
             {
-                videoPlayer.audioOutputMode = VideoAudioOutputMode.AudioSource;
+                videoPlayer.audioOutputMode = VideoAudioOutputMode.Direct;
                 videoPlayer.controlledAudioTrackCount = 1;
                 videoPlayer.EnableAudioTrack(0, true);
                 videoPlayer.SetTargetAudioSource(0, audioSource);
             }
-
-            Play();
         }
 
         private void OnError(VideoPlayer source, string message)
         {
-            Debug.LogError("Error in video player");
+            #if VIDEOPLAYER_DEBUG
+            Debug.LogError("[Video Controller] " + message);
+            #endif
         }
 
         private void SubscribeToVideoPlayerEvents()
         {
+            if (videoPlayer == null)
+                return;
+
             videoPlayer.errorReceived += OnError;
             videoPlayer.prepareCompleted += OnPrepareCompleted;
-            videoPlayer.seekCompleted += OnSeekCompleted;
             videoPlayer.started += OnStarted;
+            videoPlayer.loopPointReached += OnFinished;
         }
 
         private void UnsubscribeFromVideoPlayerEvents()
         {
+            if (videoPlayer == null)
+                return;
+
             videoPlayer.errorReceived -= OnError;
             videoPlayer.prepareCompleted -= OnPrepareCompleted;
-            videoPlayer.seekCompleted -= OnSeekCompleted;
             videoPlayer.started -= OnStarted;
+            videoPlayer.loopPointReached -= OnFinished;
         }
 
         #endregion
+
     }
 
 }

@@ -12,24 +12,22 @@ namespace Unity.VideoHelper
     /// <summary>
     /// A slider-like component specialized in media playback.
     /// </summary>
-    public class Timeline : Selectable, IDragHandler
+    [RequireComponent(typeof(RectTransform))]
+    public class Timeline : Selectable, IDragHandler, ICanvasElement, IInitializePotentialDragHandler
     {
         #region Fields
 
-        private Image progressImage;
-        private Image previewImage;
-        private RectTransform handleContainerRect;
+        private Image positionImage, previewImage;
+        private Text tooltipText;
+        private RectTransform positionContainerRect, handleContainerRect, tooltipContainerRect;
         private Vector2 handleOffset;
+        private Camera cam;
         private DrivenRectTransformTracker tracker;
+        private float value;
+        private ITimelineProvider provider;
 
         [SerializeField]
-        private RectTransform progressRect;
-
-        [SerializeField]
-        private RectTransform previewRect;
-
-        [SerializeField]
-        private RectTransform handleRect;
+        private RectTransform positionRect, previewRect, handleRect, tooltipRect;
 
         [SerializeField]
         [Range(0, 1)]
@@ -45,10 +43,10 @@ namespace Unity.VideoHelper
 
         #region Properties
 
-        public RectTransform ProgressRect
+        public RectTransform PositionRect
         {
-            get { return progressRect; }
-            set { progressRect = value; }
+            get { return positionRect; }
+            set { positionRect = value; }
         }
 
         public RectTransform PreviewRect
@@ -61,6 +59,12 @@ namespace Unity.VideoHelper
         {
             get { return handleRect; }
             set { handleRect = value; }
+        }
+
+        public RectTransform TooltipRect
+        {
+            get { return tooltipRect; }
+            set { tooltipRect = value; }
         }
 
         public float Position
@@ -88,15 +92,58 @@ namespace Unity.VideoHelper
             base.OnEnable();
 
             UpdateReferences();
-            Position = position;
+            SetPosition(position, false);
             UpdateVisuals();
+        }
+
+        protected override void OnDisable()
+        {
+            base.OnDisable();
+            tracker.Clear();
+        }
+
+        protected override void OnRectTransformDimensionsChange()
+        {
+            base.OnRectTransformDimensionsChange();
+
+            if(IsActive())
+                UpdateVisuals();
+        }
+
+        private bool isInControl;
+
+        private void Update()
+        {
+            if (!isInControl)
+                return;
+
+            var newValue = GetPreviewPoint();
+            if (newValue == value)
+                return;
+            else
+                value = newValue;
+
+            UpdateFillableVisuals(previewRect, previewImage, value);
+            UpdateAnchorBasedVisuals(tooltipRect, value);
+
+            tooltipText.text = provider.GetFormattedPosition(value);
         }
 
 #if UNITY_EDITOR
         protected override void OnValidate()
         {
             base.OnValidate();
-            UpdateVisuals();
+
+            if (IsActive())
+            {
+                UpdateReferences();
+                SetPosition(position, false);
+                UpdateVisuals();
+            }
+
+            var prefabType = UnityEditor.PrefabUtility.GetPrefabType(this);
+            if (prefabType != UnityEditor.PrefabType.Prefab && !Application.isPlaying)
+                CanvasUpdateRegistry.RegisterCanvasElementForLayoutRebuild(this);
         }
 #endif
 
@@ -104,54 +151,90 @@ namespace Unity.VideoHelper
 
         #region Private methods
 
-        private void SetPosition(float newPosition)
-        {
-            newPosition = Mathf.Clamp01(newPosition);
-
-            if (newPosition == position)
-                return;
-
-            position = newPosition;
-
-            UpdateVisuals();
-            OnPositionChanged.Invoke(newPosition);
-        }
-
         private void UpdateReferences()
         {
-            if (progressRect != null)
-                progressImage = progressRect.GetComponent<Image>();
+            if (positionRect)
+            {
+                positionImage = positionRect.GetComponent<Image>();
+                positionContainerRect = positionRect.parent.GetComponent<RectTransform>();
+            }
+            else
+            {
+                positionRect = null;
+                positionImage = null;
+                positionContainerRect = null;
+            }
 
-            if (previewRect != null)
+            if (previewRect)
+            {
                 previewImage = previewRect.GetComponent<Image>();
+            }
+            else
+            {
+                previewRect = null;
+                previewImage = null;
+            }
 
-            if (handleRect != null)
+            if (handleRect)
+            {
                 handleContainerRect = handleRect.parent.GetComponent<RectTransform>();
+            }
+            else
+            {
+                handleRect = null;
+                handleContainerRect = null;
+            }
+
+            if (tooltipRect)
+            {
+                tooltipContainerRect = tooltipRect.parent.GetComponent<RectTransform>();
+                tooltipText = tooltipRect.GetComponentInChildren<Text>();
+            }
+            else
+            {
+                tooltipRect = null;
+                tooltipContainerRect = null;
+            }
+
+            cam = Camera.main;
+            provider = GetComponentInParent<VideoPresenter>();
         }
 
         private void UpdateVisuals()
         {
-            UpdateFillableVisuals(progressRect, progressImage, position);
-            UpdateFillableVisuals(previewRect, previewImage, position);
-            UpdateHandleVisuals();
+#if UNITY_EDITOR
+            if (!Application.isPlaying)
+                UpdateReferences();
+#endif
+
+            tracker.Clear();
+
+            if (positionContainerRect)
+                UpdateFillableVisuals(positionRect, positionImage, position);
+
+            if(!isInControl)
+                UpdateFillableVisuals(previewRect, previewImage, position);
+
+            if (handleContainerRect)
+                UpdateAnchorBasedVisuals(handleRect, position);
         }
 
-        private void UpdateHandleVisuals()
+        protected void UpdateAnchorBasedVisuals(RectTransform rect, float position)
         {
-            if (handleRect == null)
+            if (rect == null)
                 return;
 
-            tracker.Add(this, handleRect, DrivenTransformProperties.Anchors);
+            tracker.Add(this, rect, DrivenTransformProperties.Anchors);
 
             var anchorMin = Vector2.zero;
             var anchorMax = Vector2.one;
 
             anchorMin[0] = anchorMax[0] = position;
-            handleRect.anchorMin = anchorMin;
-            handleRect.anchorMax = anchorMax;
+            rect.anchorMin = anchorMin;
+            rect.anchorMax = anchorMax;
         }
 
-        private void UpdateFillableVisuals(RectTransform rect, Image image, float value)
+        protected void UpdateFillableVisuals(RectTransform rect, Image image, float value)
         {
             if (rect == null)
                 return;
@@ -169,9 +252,14 @@ namespace Unity.VideoHelper
             rect.anchorMax = anchorMax;
         }
 
-        private void UpdateProgress(PointerEventData eventData, Camera cam)
+        private bool CanDrag()
         {
-            RectTransform clickRect = handleContainerRect ?? progressRect;
+            return IsActive() && IsInteractable();
+        }
+
+        private void UpdateDrag(PointerEventData eventData, Camera cam)
+        {
+            RectTransform clickRect = handleContainerRect ?? positionContainerRect;
             if (clickRect != null && clickRect.rect.size[0] > 0)
             {
                 Vector2 localCursor;
@@ -184,24 +272,91 @@ namespace Unity.VideoHelper
             }
         }
 
+        private float GetPreviewPoint()
+        {
+            Vector2 screenMousePosition = RectTransformUtility.WorldToScreenPoint(cam, Input.mousePosition);
+            Vector2 localMousePosition;
+            RectTransformUtility.ScreenPointToLocalPointInRectangle(tooltipContainerRect, screenMousePosition, cam, out localMousePosition);
+            localMousePosition -= tooltipContainerRect.rect.position;
+
+            return Mathf.Clamp01((localMousePosition[0]) / tooltipContainerRect.rect.size[0]);
+        }
+
+        private void SetPosition(float newPosition, bool sendCallback = true)
+        {
+            newPosition = Mathf.Clamp01(newPosition);
+
+            if (position == newPosition)
+                return;
+
+            position = newPosition;
+
+            UpdateVisuals();
+
+            if (sendCallback)
+                OnPositionChanged.Invoke(newPosition);
+        }
+
         #endregion
 
         #region IPointerEnter, IPointerExit, IPointerDown, IDragHandler members
 
         public override void OnPointerEnter(PointerEventData eventData)
         {
+            isInControl = true;
+
             if (handleRect != null)
-                handleRect.gameObject.SetActive(true);
+                SetActive(handleRect.gameObject, true);
+
+            if (tooltipRect != null)
+                tooltipRect.gameObject.SetActive(true);
+        }
+
+        private void SetActive(GameObject gameObject, bool value)
+        {
+            if (gameObject == null)
+                return;
+
+            if (value)
+            {
+                var activate = gameObject.GetComponent<IActivate>();
+                if (activate != null)
+                {
+                    activate.Activate();
+                    return;
+                }
+            }
+            else
+            {
+                var deactivate = gameObject.GetComponent<IDeactivate>();
+                if (deactivate != null)
+                {
+                    deactivate.Deactivate();
+                    return;
+                }
+            }
+           
+            gameObject.SetActive(value);
         }
 
         public override void OnPointerExit(PointerEventData eventData)
         {
+            isInControl = false;
+
             if (handleRect != null)
-                handleRect.gameObject.SetActive(false);
+                SetActive(handleRect.gameObject, false);
+
+            if (tooltipRect != null)
+                tooltipRect.gameObject.SetActive(false);
+
+            UpdateFillableVisuals(previewRect, previewImage, 0);
         }
 
         public override void OnPointerDown(PointerEventData eventData)
         {
+            if (!CanDrag())
+                return;
+
             base.OnPointerDown(eventData);
 
             handleOffset = Vector2.zero;
@@ -210,16 +365,50 @@ namespace Unity.VideoHelper
                 Vector2 localMousePos;
                 if (RectTransformUtility.ScreenPointToLocalPointInRectangle(handleRect, eventData.position, eventData.pressEventCamera, out localMousePos))
                     handleOffset = localMousePos;
+                handleOffset.y = -handleOffset.y;
             }
             else
             {
-                UpdateProgress(eventData, eventData.pressEventCamera);
+                UpdateDrag(eventData, eventData.pressEventCamera);
             }
         }
 
         public virtual void OnDrag(PointerEventData eventData)
         {
-            UpdateProgress(eventData, eventData.pressEventCamera);
+            if (!CanDrag())
+                return;
+
+            isInControl = true;
+            UpdateDrag(eventData, eventData.pressEventCamera);
+        }
+
+        #endregion
+
+        #region ICanvasElement
+
+        public void Rebuild(CanvasUpdate executing)
+        {
+#if UNITY_EDITOR
+            if (executing == CanvasUpdate.Prelayout)
+                onPositionChanged.Invoke(position);
+#endif
+        }
+
+        public void LayoutComplete()
+        {
+        }
+
+        public void GraphicUpdateComplete()
+        {
+        }
+
+        #endregion
+
+        #region IInitializePotentialDragHandler
+
+        public void OnInitializePotentialDrag(PointerEventData eventData)
+        {
+            eventData.useDragThreshold = false;
         }
 
         #endregion

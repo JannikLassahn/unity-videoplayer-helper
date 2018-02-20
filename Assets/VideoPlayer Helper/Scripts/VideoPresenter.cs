@@ -1,5 +1,7 @@
 ﻿using System;
+using System.Collections;
 using UnityEngine;
+using UnityEngine.Events;
 using UnityEngine.UI;
 
 namespace Unity.VideoHelper
@@ -14,7 +16,8 @@ namespace Unity.VideoHelper
     /// <summary>
     /// Handles UI state for the video player.
     /// </summary>
-    public class VideoPresenter : MonoBehaviour
+    [RequireComponent(typeof(VideoController))]
+    public class VideoPresenter : MonoBehaviour, ITimelineProvider
     {
         #region Consts
 
@@ -32,7 +35,10 @@ namespace Unity.VideoHelper
         #region Public Fields
 
         [Header("Controls")]
-
+        public Transform Screen;
+        public Transform ControlsPanel;
+        public Transform Spinner;
+        public Transform Thumbnail;
         public Timeline Timeline;
         public Slider Volume;
         public Image PlayPause;
@@ -47,6 +53,9 @@ namespace Unity.VideoHelper
         public KeyCode WindowedKey = KeyCode.Escape;
         public KeyCode TogglePlayKey = KeyCode.Space;
 
+        [Space(10)]
+        public bool ToggleScreenDoubleClick = true;
+
         [Header("Content")]
 
         public Sprite Play;
@@ -58,21 +67,9 @@ namespace Unity.VideoHelper
 
         public VolumeStore[] Volumes = new VolumeStore[0];
 
-        [Space(10)]
-
-        public Sprite TimelineBackground;
-        public Sprite TimelineForeground;
-        public Sprite TimelineKnob;
-
-        [Space(10)]
-
-        public Sprite VolumeBackground;
-        public Sprite VolumeForeground;
-        public Sprite VolumeKnob;
-
         [Header("Animation")]
-        public AnimationCurve FadeIn = AnimationCurve.Linear(0, 0, 1, 1);
-        public AnimationCurve FadeOut = AnimationCurve.Linear(0, 1, 1, 0);
+        public AnimationCurve FadeIn = AnimationCurve.Linear(0, 0, .4f, 1);
+        public AnimationCurve FadeOut = AnimationCurve.Linear(0, 1, .4f, 0);
 
         #endregion
 
@@ -81,17 +78,29 @@ namespace Unity.VideoHelper
         private void Start()
         {
             controller = GetComponent<VideoController>();
-            controller.TimelinePositionChanged.AddListener(OnTimeLinePositionChanged);
-            controller.StartedPlaying.AddListener(OnStartedPlaying);
+
+            if (controller == null)
+            {
+                Debug.Log("There is no video controller attached.");
+                DestroyImmediate(this);
+                return;
+            }
+
+            controller.OnStartedPlaying.AddListener(OnStartedPlaying);
 
             Volume.onValueChanged
                 .AddListener(OnVolumeChanged);
 
-            PlayPause.gameObject.AddComponent<ClickRouter>()
-                .OnClick.AddListener(ToggleIsPlaying);
+            AttachHandlerToClick(Thumbnail.gameObject, Prepare);
 
-            SmallFullscreen.gameObject.AddComponent<ClickRouter>()
-                .OnClick.AddListener(ToggleFullscreen);
+            AttachHandlerToClick(PlayPause.gameObject, ToggleIsPlaying);
+            AttachHandlerToClick(SmallFullscreen.gameObject, ToggleFullscreen);
+
+            AttachHandlerToDoubleClick(Screen.gameObject, ToggleFullscreen);
+            AttachHandlerToClick(Screen.gameObject, ToggleIsPlaying);
+
+            if(ControlsPanel != null)
+                ControlsPanel.gameObject.SetActive(false);
 
             Array.Sort(Volumes, (v1, v2) =>
             {
@@ -104,14 +113,49 @@ namespace Unity.VideoHelper
             });
         }
 
+        private void Prepare()
+        {
+            if(Thumbnail != null)
+                Thumbnail.gameObject.SetActive(false);
+
+            if(Spinner != null)
+                Spinner.gameObject.SetActive(true);
+        }
+
         private void Update()
         {
-            CheckKeys();            
+            CheckKeys();
+
+            if (controller.IsPlaying)
+                Timeline.Position = controller.NormalizedTime;
         }
 
         #endregion
 
+        public string GetFormattedPosition(float time)
+        {
+            return PrettyTimeFormat(TimeSpan.FromSeconds(time * controller.Duration));
+        }
+
         #region Private methods
+
+        private void AttachHandlerToClick(GameObject control, UnityAction action)
+        {
+            var button = control.GetComponent<Button>();
+            if (button == null)
+                control.AddComponent<ClickRouter>().OnClick.AddListener(action);
+            else
+                button.onClick.AddListener(action);
+        }
+
+        private void AttachHandlerToDoubleClick(GameObject control, UnityAction action)
+        {
+            var router = control.GetComponent<ClickRouter>();
+            if (router == null)
+                control.AddComponent<ClickRouter>().OnDouleClick.AddListener(action);
+            else
+                router.OnDouleClick.AddListener(action);
+        }
 
         private void CheckKeys()
         {
@@ -145,13 +189,15 @@ namespace Unity.VideoHelper
 
         private void OnStartedPlaying()
         {
-            Duration.text = PrettyTimeFormat(TimeSpan.FromSeconds(controller.Duration));
-        }
+            if (ControlsPanel != null)
+                ControlsPanel.gameObject.SetActive(true);
 
-        private void OnTimeLinePositionChanged(float position)
-        {
-            Timeline.Position = position;
-            Current.text = PrettyTimeFormat(TimeSpan.FromSeconds(controller.Time));
+            if (Spinner != null)
+                Spinner.gameObject.SetActive(false);
+
+            if(Duration != null)
+                Duration.text = PrettyTimeFormat(TimeSpan.FromSeconds(controller.Duration));
+            StartCoroutine(SetCurrentPosition());
         }
 
         private void OnVolumeChanged(float volume)
@@ -173,9 +219,26 @@ namespace Unity.VideoHelper
         private void ToggleFullscreen()
         {
             if (ScreenSizeHelper.IsFullscreen)
+            {
                 ScreenSizeHelper.GoWindowed();
+                SmallFullscreen.sprite = Fullscreen;
+            }
             else
+            {
                 ScreenSizeHelper.GoFullscreen(gameObject.transform as RectTransform);
+                SmallFullscreen.sprite = Normal;
+            }
+        }
+
+        private IEnumerator SetCurrentPosition()
+        {
+            if(Current != null)
+                Current.text = PrettyTimeFormat(TimeSpan.FromSeconds(controller.Time));
+
+            yield return new WaitForSeconds(1);
+
+            if(controller.IsPlaying)
+                StartCoroutine(SetCurrentPosition());
         }
 
         private string PrettyTimeFormat(TimeSpan time)
