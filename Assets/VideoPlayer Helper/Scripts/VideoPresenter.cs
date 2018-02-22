@@ -7,7 +7,7 @@ using UnityEngine.UI;
 namespace Unity.VideoHelper
 {
     [Serializable]
-    public class VolumeStore
+    public class VolumeInfo
     {
         public float Minimum;
         public Sprite Sprite;
@@ -29,6 +29,7 @@ namespace Unity.VideoHelper
         #region Private Fields
 
         private VideoController controller;
+        private float previousVolume;
 
         #endregion
 
@@ -54,22 +55,23 @@ namespace Unity.VideoHelper
         public KeyCode TogglePlayKey = KeyCode.Space;
 
         [Space(10)]
-        public bool ToggleScreenDoubleClick = true;
+        public bool ToggleScreenOnDoubleClick = true;
+        public bool TogglePlayPauseOnClick = true;
 
         [Header("Content")]
 
         public Sprite Play;
         public Sprite Pause;
+
         public Sprite Normal;
         public Sprite Fullscreen;
 
+        public Sprite Mute;
+        public Sprite UnMuted;
+
         [Space(10)]
 
-        public VolumeStore[] Volumes = new VolumeStore[0];
-
-        [Header("Animation")]
-        public AnimationCurve FadeIn = AnimationCurve.Linear(0, 0, .4f, 1);
-        public AnimationCurve FadeOut = AnimationCurve.Linear(0, 1, .4f, 0);
+        public VolumeInfo[] Volumes = new VolumeInfo[0];
 
         #endregion
 
@@ -92,6 +94,7 @@ namespace Unity.VideoHelper
                 .AddListener(OnVolumeChanged);
 
             AttachHandlerToClick(Thumbnail.gameObject, Prepare);
+            AttachHandlerToClick(MuteUnmute.gameObject, ToggleMute);
 
             AttachHandlerToClick(PlayPause.gameObject, ToggleIsPlaying);
             AttachHandlerToClick(SmallFullscreen.gameObject, ToggleFullscreen);
@@ -113,15 +116,6 @@ namespace Unity.VideoHelper
             });
         }
 
-        private void Prepare()
-        {
-            if(Thumbnail != null)
-                Thumbnail.gameObject.SetActive(false);
-
-            if(Spinner != null)
-                Spinner.gameObject.SetActive(true);
-        }
-
         private void Update()
         {
             CheckKeys();
@@ -139,9 +133,29 @@ namespace Unity.VideoHelper
 
         #region Private methods
 
+        private void ToggleMute()
+        {
+            if (Volume.value == 0)
+                Volume.value = previousVolume;
+            else
+            {
+                previousVolume = Volume.value;
+                Volume.value = 0f;
+            }
+        }
+
+        private void Prepare()
+        {
+            if (Thumbnail != null)
+                Thumbnail.gameObject.SetActive(false);
+
+            if (Spinner != null)
+                Spinner.gameObject.SetActive(true);
+        }
+
         private void AttachHandlerToClick(GameObject control, UnityAction action)
         {
-            var button = control.GetComponent<Button>();
+            var button = control.GetComponentInParent<Button>();
             if (button == null)
                 control.AddComponent<ClickRouter>().OnClick.AddListener(action);
             else
@@ -152,9 +166,9 @@ namespace Unity.VideoHelper
         {
             var router = control.GetComponent<ClickRouter>();
             if (router == null)
-                control.AddComponent<ClickRouter>().OnDouleClick.AddListener(action);
+                control.AddComponent<ClickRouter>().OnDoubleClick.AddListener(action);
             else
-                router.OnDouleClick.AddListener(action);
+                router.OnDoubleClick.AddListener(action);
         }
 
         private void CheckKeys()
@@ -197,7 +211,12 @@ namespace Unity.VideoHelper
 
             if(Duration != null)
                 Duration.text = PrettyTimeFormat(TimeSpan.FromSeconds(controller.Duration));
+
             StartCoroutine(SetCurrentPosition());
+
+            Volume.value = controller.Volume;
+            SmallFullscreen.sprite = Fullscreen;
+            PlayPause.sprite = Pause;
         }
 
         private void OnVolumeChanged(float volume)
@@ -232,13 +251,13 @@ namespace Unity.VideoHelper
 
         private IEnumerator SetCurrentPosition()
         {
-            if(Current != null)
-                Current.text = PrettyTimeFormat(TimeSpan.FromSeconds(controller.Time));
+            while (controller.IsPlaying)
+            {
+                if (Current != null)
+                    Current.text = PrettyTimeFormat(TimeSpan.FromSeconds(controller.Time));
 
-            yield return new WaitForSeconds(1);
-
-            if(controller.IsPlaying)
-                StartCoroutine(SetCurrentPosition());
+                yield return new WaitForSeconds(1);
+            }
         }
 
         private string PrettyTimeFormat(TimeSpan time)

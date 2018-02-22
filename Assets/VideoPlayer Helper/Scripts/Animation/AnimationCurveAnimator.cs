@@ -25,6 +25,8 @@ namespace Unity.VideoHelper.Animation
         private float inDuration;
         private float outDuration;
 
+        private Coroutine currentCoroutine;
+
         #endregion
 
         #region Properties
@@ -90,64 +92,52 @@ namespace Unity.VideoHelper.Animation
 
         protected void Animate(AnimationCurve curve, float duration, Action<float> action)
         {
-            StopAllCoroutines();
+            if(currentCoroutine != null)
+                StopCoroutine(currentCoroutine);
 
             if (smooth)
                 time = Mathf.Clamp(duration - time, 0, duration);
             else
                 time = 0f;
 
-            StartCoroutine(AnimateInternal(curve, duration, action));
+            currentCoroutine = StartCoroutine(AnimateInternal(curve, duration, action));
         }
 
-        private IEnumerator AnimateInternal(AnimationCurve curve, float duration, Action<float> action)
+        protected virtual IEnumerator AnimateInternal(AnimationCurve curve, float duration, Action<float> action)
         {
+            CallbackStarting(curve);
+
             while (time < duration)
             {
                 action(curve.Evaluate(time));
                 time += Time.deltaTime;
                 yield return null;
             }
+
+            CallbackFinished(curve);
         }
+
+        private void CallbackFinished(AnimationCurve curve)
+        {
+            if (curve == In)
+                InFinished();
+            else if (curve == Out)
+                OutFinished();
+        }
+
+        private void CallbackStarting(AnimationCurve curve)
+        {
+            if (curve == In)
+                InStarting();
+            else if (curve == Out)
+                OutStarting();
+        }
+
+        protected virtual void InStarting() { }
+        protected virtual void OutStarting() { }
+        protected virtual void InFinished() { }
+        protected virtual void OutFinished() { }
 
         #endregion
-    }
-
-    /// <summary>
-    /// Experimental generic animator.
-    /// </summary>
-    /// <example>
-    /// 
-    /// This example shows how to set up control over the alpha value of the CanvasGroup.
-    /// 
-    ///     var myAnimator = new AnimationCurveAnimator<CanvasGroup>();
-    ///     myAnimator.SetProperty(group => { return y => group.alpha = y; });
-    /// 
-    /// To start the animations:
-    ///     myAnimator.AnimateIn();
-    ///     myAnimator.AnimateOut();
-    /// 
-    /// </example>
-    /// <typeparam name="TTarget">The target.</typeparam>
-    public class AnimationCurveAnimator<TTarget> : AnimationCurveAnimator
-    {
-        private Func<TTarget, Action<float>> targetProperty;
-
-        public TTarget Target;
-
-        public void SetProperty(Func<TTarget, Action<float>> func)
-        {
-            targetProperty = func;
-        }
-
-        public void AnimateIn()
-        {
-            Animate(In, InDuration, targetProperty(Target));
-        }
-
-        public void AnimateOut()
-        {
-            Animate(Out, OutDuration, targetProperty(Target));
-        }
     }
 }

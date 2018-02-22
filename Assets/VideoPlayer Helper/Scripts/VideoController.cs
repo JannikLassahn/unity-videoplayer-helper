@@ -2,8 +2,6 @@
 #define VIDEOPLAYER_DEBUG
 #endif
 
-using System;
-using System.IO;
 using UnityEngine;
 using UnityEngine.Events;
 using UnityEngine.UI;
@@ -30,7 +28,10 @@ namespace Unity.VideoHelper
         [SerializeField]
         private AudioSource audioSource;
 
-        [Space(5)]
+        [Header("Events")]
+        [SerializeField]
+        private UnityEvent onPrepared = new UnityEvent();
+
         [SerializeField]
         private UnityEvent onStartedPlaying = new UnityEvent();
 
@@ -97,8 +98,22 @@ namespace Unity.VideoHelper
         /// </summary>
         public float Volume
         {
-            get { return audioSource.volume; }
-            set { audioSource.volume = value; }
+            get { return audioSource == null ? videoPlayer.GetDirectAudioVolume(0) : audioSource.volume; }
+            set
+            {
+                if (audioSource == null)
+                    videoPlayer.SetDirectAudioVolume(0, value);
+                else
+                    audioSource.volume = value;
+            }
+        }
+
+        /// <summary>
+        /// Fired when the video is prepared for playback.
+        /// </summary>
+        public UnityEvent OnPrepared
+        {
+            get { return onPrepared; }
         }
 
         /// <summary>
@@ -138,19 +153,15 @@ namespace Unity.VideoHelper
 
         private void Start()
         {
-            screenOutput = GetOrAddComponent<RawImage>(screen.gameObject);
-
-            if (audioSource == null)
-                audioSource = GetOrAddComponent<AudioSource>();
+            screenOutput = screen.gameObject.GetOrAddComponent<RawImage>();
 
             if (videoPlayer == null)
             {
-                videoPlayer = GetOrAddComponent<VideoPlayer>();
+                videoPlayer = gameObject.GetOrAddComponent<VideoPlayer>();
                 SubscribeToVideoPlayerEvents();
             }
 
             videoPlayer.playOnAwake = false;
-            audioSource.playOnAwake = false;
         }
 
         #endregion
@@ -202,6 +213,17 @@ namespace Unity.VideoHelper
         }
 
         /// <summary>
+        /// Plays or pauses the video.
+        /// </summary>
+        public void TogglePlayPause()
+        {
+            if (IsPlaying)
+                Pause();
+            else
+                Play();
+        }
+
+        /// <summary>
         /// Jumps to the specified time in the video.
         /// </summary>
         /// <param name="time">The normalized time.</param>
@@ -215,16 +237,6 @@ namespace Unity.VideoHelper
 
         #region Private Methods
 
-        private TComponent GetOrAddComponent<TComponent>(GameObject target = null) where TComponent : Component
-        {
-            target = target ?? gameObject;
-            var comp = target.GetComponent<TComponent>();
-            if (comp == null)
-                comp = target.AddComponent<TComponent>();
-
-            return comp;
-        }
-
         private void OnStarted(VideoPlayer source)
         {
             onStartedPlaying.Invoke();
@@ -237,35 +249,43 @@ namespace Unity.VideoHelper
 
         private void OnPrepareCompleted(VideoPlayer source)
         {
+            onPrepared.Invoke();
             screenOutput.texture = videoPlayer.texture;
 
 #if VIDEOPLAYER_DEBUG
-            Debug.LogWarning("[Video Controller] Depending on your Unity version you might not be able to play audio in the Editor.");
+            Debug.LogWarning("[Video Controller] Depending on your Unity version you might not be able to hear audio in the Editor.");
 #endif
 
             SetupAudio();
-            SetupAspect();
+            SetupScreenAspectRatio();
 
             if (StartAfterPreparation)
                 Play();
         }
 
-        private void SetupAspect()
+        private void SetupScreenAspectRatio()
         {
-            var fitter = GetOrAddComponent<AspectRatioFitter>(screen.gameObject);
+            var fitter = screen.gameObject.GetOrAddComponent<AspectRatioFitter>();
             fitter.aspectMode = AspectRatioFitter.AspectMode.FitInParent;
             fitter.aspectRatio = (float)videoPlayer.texture.width / videoPlayer.texture.height;
         }
 
         private void SetupAudio()
         {
-            if (videoPlayer.audioTrackCount >= 1)
+            if (videoPlayer.audioTrackCount <= 0)
+                return;
+
+            if(audioSource == null)
             {
                 videoPlayer.audioOutputMode = VideoAudioOutputMode.Direct;
-                videoPlayer.controlledAudioTrackCount = 1;
-                videoPlayer.EnableAudioTrack(0, true);
                 videoPlayer.SetTargetAudioSource(0, audioSource);
             }
+            else
+            {
+                videoPlayer.audioOutputMode = VideoAudioOutputMode.AudioSource;
+            }
+            videoPlayer.controlledAudioTrackCount = 1;
+            videoPlayer.EnableAudioTrack(0, true);
         }
 
         private void OnError(VideoPlayer source, string message)

@@ -23,7 +23,8 @@ namespace Unity.VideoHelper
         private Vector2 handleOffset;
         private Camera cam;
         private DrivenRectTransformTracker tracker;
-        private float value;
+        private float previewPosition;
+        private float stepSize = 0.05f;
         private ITimelineProvider provider;
 
         [SerializeField]
@@ -73,12 +74,12 @@ namespace Unity.VideoHelper
             set { SetPosition(value); }
         }
 
-        public FloatEvent OnPositionChanged
-        {
-            get { return onPositionChanged; }
-        }
+        //public UnityEvent<float> OnPositionChanged
+        //{
+        //    get { return onPositionChanged; }
+        //}
 
-        public FloatEvent OnSeeked
+        public UnityEvent<float> OnSeeked
         {
             get { return onSeeked; }
         }
@@ -117,16 +118,16 @@ namespace Unity.VideoHelper
             if (!isInControl)
                 return;
 
-            var newValue = GetPreviewPoint();
-            if (newValue == value)
+            var newPreviewPosition = GetPreviewPoint();
+            if (newPreviewPosition == previewPosition)
                 return;
             else
-                value = newValue;
+                previewPosition = newPreviewPosition;
 
-            UpdateFillableVisuals(previewRect, previewImage, value);
-            UpdateAnchorBasedVisuals(tooltipRect, value);
+            UpdateFillableVisuals(previewRect, previewImage, previewPosition);
+            UpdateAnchorBasedVisuals(tooltipRect, previewPosition);
 
-            tooltipText.text = provider.GetFormattedPosition(value);
+            tooltipText.text = provider.GetFormattedPosition(previewPosition);
         }
 
 #if UNITY_EDITOR
@@ -149,7 +150,44 @@ namespace Unity.VideoHelper
 
         #endregion
 
-        #region Private methods
+        #region Methods
+
+        public override void OnMove(AxisEventData eventData)
+        {
+            if (!IsActive() || !IsInteractable())
+            {
+                base.OnMove(eventData);
+                return;
+            }
+
+            Func<bool> isAutomatic = () => navigation.mode == Navigation.Mode.Automatic;
+
+            switch (eventData.moveDir)
+            {
+                case MoveDirection.Left:
+                    if (isAutomatic())
+                        Move(position - stepSize);
+                    else
+                        base.OnMove(eventData);
+                    break;
+                case MoveDirection.Right:
+                    if (isAutomatic())
+                        Move(position + stepSize);
+                    else
+                        base.OnMove(eventData);
+                    break;
+                case MoveDirection.Down:
+                case MoveDirection.Up:
+                    base.OnMove(eventData);
+                    break;
+            }
+        }
+
+        private void Move(float value)
+        {
+            SetPosition(value);
+            onSeeked.Invoke(value);
+        }
 
         private void UpdateReferences()
         {
@@ -293,8 +331,8 @@ namespace Unity.VideoHelper
 
             UpdateVisuals();
 
-            if (sendCallback)
-                OnPositionChanged.Invoke(newPosition);
+            //if (sendCallback)
+            //    OnPositionChanged.Invoke(newPosition);
         }
 
         #endregion
@@ -384,7 +422,7 @@ namespace Unity.VideoHelper
 
         #endregion
 
-        #region ICanvasElement
+        #region ICanvasElement members
 
         public void Rebuild(CanvasUpdate executing)
         {
@@ -404,7 +442,7 @@ namespace Unity.VideoHelper
 
         #endregion
 
-        #region IInitializePotentialDragHandler
+        #region IInitializePotentialDragHandler members
 
         public void OnInitializePotentialDrag(PointerEventData eventData)
         {
