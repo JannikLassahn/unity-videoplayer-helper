@@ -1,10 +1,11 @@
 ﻿using UnityEngine;
 using UnityEngine.Events;
 using UnityEngine.EventSystems;
+using UnityEngine.UI;
 
 namespace Unity.VideoHelper
 {
-    public class ClickRouter : MonoBehaviour, IPointerClickHandler
+    public class ClickRouter : Selectable, IPointerClickHandler
     {
         public UnityEvent OnClick = new UnityEvent();
         public UnityEvent OnDoubleClick = new UnityEvent();

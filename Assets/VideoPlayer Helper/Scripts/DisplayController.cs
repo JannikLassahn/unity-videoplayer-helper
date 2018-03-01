@@ -3,23 +3,58 @@ using UnityEngine.UI;
 
 namespace Unity.VideoHelper
 {
-    internal static class ScreenSizeHelper
+    /// <summary>
+    /// Factory for getting instances of <see cref="IDisplayController"/>.
+    /// </summary>
+    public static class DisplayController
     {
+        private static readonly IDisplayController[] helper = new DisplayControllerInternal[Display.displays.Length];
+
+        /// <summary>
+        /// Gets the controller for display 0 (default).
+        /// </summary>
+        public static IDisplayController Default
+        {
+            get { return ForDisplay(0); }
+        }
+
+        /// <summary>
+        /// Gets the controller for a display.
+        /// </summary>
+        /// <param name="display">The display index.</param>
+        /// <returns></returns>
+        public static IDisplayController ForDisplay(int display)
+        {
+            if (helper[display] == null)
+                helper[display] = new DisplayControllerInternal(display);
+
+            return helper[display];
+        }
+    }
+
+    class DisplayControllerInternal : IDisplayController
+    {
+        internal DisplayControllerInternal(int display)
+        {
+            targetDisplay = display;
+        }
+
         #region Fields
 
-        private static Vector2 anchorMin, anchorMax, offsetMin, offsetMax;
-        private static Vector3 scale;
+        private Vector2 anchorMin, anchorMax, offsetMin, offsetMax;
+        private Vector3 scale;
 
-        private static GameObject fullscreenCanvas;
-        private static RectTransform target, targetParent;
+        private GameObject fullscreenCanvas;
+        private RectTransform target, targetParent;
 
-        private static bool IsAlwaysFullscreen;
+        private bool IsAlwaysFullscreen;
+        private int targetDisplay;
 
         #endregion
 
         #region Properties
 
-        public static bool IsFullscreen
+        public bool IsFullscreen
         {
             get { return fullscreenCanvas != null && fullscreenCanvas.activeSelf; }
         }
@@ -28,7 +63,7 @@ namespace Unity.VideoHelper
 
         #region Methods
 
-        public static void GoFullscreen(RectTransform rectTransform)
+        public void ToFullscreen(RectTransform rectTransform)
         {
             if (fullscreenCanvas == null)
                 Setup();
@@ -55,7 +90,7 @@ namespace Unity.VideoHelper
             Screen.fullScreen = true;
         }
 
-        public static void GoWindowed()
+        public void ToNormal()
         {
             target.SetParent(targetParent);
 
@@ -70,20 +105,20 @@ namespace Unity.VideoHelper
             Screen.fullScreen = IsAlwaysFullscreen;
         }
 
-        #endregion  
+        #endregion
 
         #region Private methods
 
-        private static void Setup()
+        private void Setup()
         {
-            fullscreenCanvas = new GameObject("_VideoPresenter_Fullscreen", typeof(Canvas), typeof(CanvasScaler), typeof(GraphicRaycaster));
+            fullscreenCanvas = new GameObject("_DisplayController_ForDisplay_" + targetDisplay, typeof(Canvas), typeof(CanvasScaler), typeof(GraphicRaycaster));
 
             var canvas = fullscreenCanvas.GetComponent<Canvas>();
             canvas.renderMode = RenderMode.ScreenSpaceOverlay;
-
+            canvas.targetDisplay = targetDisplay;
+            
             var scaler = fullscreenCanvas.GetComponent<CanvasScaler>();
             scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
-            scaler.referenceResolution = new Vector2(Screen.width, Screen.height);
         }
 
         #endregion

@@ -26,4 +26,26 @@ namespace Unity.VideoHelper
         void Deactivate();
     }
 
+    /// <summary>
+    /// Controls state of a transform for a display.
+    /// </summary>
+    public interface IDisplayController
+    {
+        /// <summary>
+        /// Gets whether the content is presented fullscreen.
+        /// </summary>
+        bool IsFullscreen { get; }
+
+        /// <summary>
+        /// Makes the target fill the whole display.
+        /// </summary>
+        /// <param name="target">The tranform to make fullscreen.</param>
+        void ToFullscreen(RectTransform target);
+
+        /// <summary>
+        /// Resets a target to its original state before <see cref="ToFullscreen(RectTransform)"/>.
+        /// </summary>
+        void ToNormal();
+    }
+
 }

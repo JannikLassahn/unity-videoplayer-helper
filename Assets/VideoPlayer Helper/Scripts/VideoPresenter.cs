@@ -28,6 +28,7 @@ namespace Unity.VideoHelper
 
         #region Private Fields
 
+        private IDisplayController display;
         private VideoController controller;
         private float previousVolume;
 
@@ -47,6 +48,9 @@ namespace Unity.VideoHelper
         public Image SmallFullscreen;
         public Text Current;
         public Text Duration;
+
+        [SerializeField]
+        private int targetDisplay = 0;
 
         [Header("Input")]
 
@@ -72,6 +76,20 @@ namespace Unity.VideoHelper
         [Space(10)]
 
         public VolumeInfo[] Volumes = new VolumeInfo[0];
+
+        #endregion
+
+        #region Properties
+
+        public int TargetDisplay
+        {
+            get { return targetDisplay; }
+            set
+            {
+                targetDisplay = value;
+                display = DisplayController.ForDisplay(targetDisplay);
+            }
+        }
 
         #endregion
 
@@ -104,6 +122,8 @@ namespace Unity.VideoHelper
 
             if(ControlsPanel != null)
                 ControlsPanel.gameObject.SetActive(false);
+
+            TargetDisplay = targetDisplay;
 
             Array.Sort(Volumes, (v1, v2) =>
             {
@@ -156,10 +176,10 @@ namespace Unity.VideoHelper
         private void AttachHandlerToClick(GameObject control, UnityAction action)
         {
             var button = control.GetComponentInParent<Button>();
-            if (button == null)
-                control.AddComponent<ClickRouter>().OnClick.AddListener(action);
-            else
+            if (button != null)
                 button.onClick.AddListener(action);
+            else
+                control.GetOrAddComponent<ClickRouter>().OnClick.AddListener(action);
         }
 
         private void AttachHandlerToDoubleClick(GameObject control, UnityAction action)
@@ -175,11 +195,11 @@ namespace Unity.VideoHelper
         {
             if (Input.GetKeyDown(FullscreenKey))
             {
-                ScreenSizeHelper.GoFullscreen(gameObject.transform as RectTransform);
+                display.ToFullscreen(gameObject.transform as RectTransform);
             }
             if (Input.GetKeyDown(WindowedKey))
             {
-                ScreenSizeHelper.GoWindowed();
+                display.ToNormal();
             }
             if (Input.GetKeyDown(TogglePlayKey))
             {
@@ -237,14 +257,14 @@ namespace Unity.VideoHelper
 
         private void ToggleFullscreen()
         {
-            if (ScreenSizeHelper.IsFullscreen)
+            if (display.IsFullscreen)
             {
-                ScreenSizeHelper.GoWindowed();
+                display.ToNormal();
                 SmallFullscreen.sprite = Fullscreen;
             }
             else
             {
-                ScreenSizeHelper.GoFullscreen(gameObject.transform as RectTransform);
+                display.ToFullscreen(gameObject.transform as RectTransform);
                 SmallFullscreen.sprite = Normal;
             }
         }
