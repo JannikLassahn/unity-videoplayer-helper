@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections;
 using UnityEngine;
-using UnityEngine.Events;
 using UnityEngine.UI;
 
 namespace Unity.VideoHelper
@@ -39,13 +38,13 @@ namespace Unity.VideoHelper
         [Header("Controls")]
         public Transform Screen;
         public Transform ControlsPanel;
-        public Transform Spinner;
+        public Transform LoadingIndicator;
         public Transform Thumbnail;
         public Timeline Timeline;
         public Slider Volume;
         public Image PlayPause;
         public Image MuteUnmute;
-        public Image SmallFullscreen;
+        public Image NormalFullscreen;
         public Text Current;
         public Text Duration;
 
@@ -69,12 +68,7 @@ namespace Unity.VideoHelper
 
         public Sprite Normal;
         public Sprite Fullscreen;
-
-        public Sprite Mute;
-        public Sprite UnMuted;
-
-        [Space(10)]
-
+        
         public VolumeInfo[] Volumes = new VolumeInfo[0];
 
         #endregion
@@ -108,20 +102,20 @@ namespace Unity.VideoHelper
 
             controller.OnStartedPlaying.AddListener(OnStartedPlaying);
 
-            Volume.onValueChanged
-                .AddListener(OnVolumeChanged);
+            Volume.onValueChanged.AddListener(OnVolumeChanged);
 
-            AttachHandlerToClick(Thumbnail.gameObject, Prepare);
-            AttachHandlerToClick(MuteUnmute.gameObject, ToggleMute);
+            Thumbnail.OnClick(Prepare);
+            MuteUnmute.OnClick(ToggleMute);
 
-            AttachHandlerToClick(PlayPause.gameObject, ToggleIsPlaying);
-            AttachHandlerToClick(SmallFullscreen.gameObject, ToggleFullscreen);
+            PlayPause.OnClick(ToggleIsPlaying);
+            NormalFullscreen.OnClick(ToggleFullscreen);
 
-            AttachHandlerToDoubleClick(Screen.gameObject, ToggleFullscreen);
-            AttachHandlerToClick(Screen.gameObject, ToggleIsPlaying);
+            Screen.OnDoubleClick(ToggleFullscreen);
+            Screen.OnClick(ToggleIsPlaying);
 
-            if(ControlsPanel != null)
-                ControlsPanel.gameObject.SetActive(false);
+            ControlsPanel.SetGameObjectActive(false);
+            LoadingIndicator.SetGameObjectActive(false);
+            Thumbnail.SetGameObjectActive(true);
 
             TargetDisplay = targetDisplay;
 
@@ -166,29 +160,8 @@ namespace Unity.VideoHelper
 
         private void Prepare()
         {
-            if (Thumbnail != null)
-                Thumbnail.gameObject.SetActive(false);
-
-            if (Spinner != null)
-                Spinner.gameObject.SetActive(true);
-        }
-
-        private void AttachHandlerToClick(GameObject control, UnityAction action)
-        {
-            var button = control.GetComponentInParent<Button>();
-            if (button != null)
-                button.onClick.AddListener(action);
-            else
-                control.GetOrAddComponent<ClickRouter>().OnClick.AddListener(action);
-        }
-
-        private void AttachHandlerToDoubleClick(GameObject control, UnityAction action)
-        {
-            var router = control.GetComponent<ClickRouter>();
-            if (router == null)
-                control.AddComponent<ClickRouter>().OnDoubleClick.AddListener(action);
-            else
-                router.OnDoubleClick.AddListener(action);
+            Thumbnail.SetGameObjectActive(false);
+            LoadingIndicator.SetGameObjectActive(true);
         }
 
         private void CheckKeys()
@@ -223,11 +196,8 @@ namespace Unity.VideoHelper
 
         private void OnStartedPlaying()
         {
-            if (ControlsPanel != null)
-                ControlsPanel.gameObject.SetActive(true);
-
-            if (Spinner != null)
-                Spinner.gameObject.SetActive(false);
+            ControlsPanel.SetGameObjectActive(true);
+            LoadingIndicator.SetGameObjectActive(false);
 
             if(Duration != null)
                 Duration.text = PrettyTimeFormat(TimeSpan.FromSeconds(controller.Duration));
@@ -235,7 +205,7 @@ namespace Unity.VideoHelper
             StartCoroutine(SetCurrentPosition());
 
             Volume.value = controller.Volume;
-            SmallFullscreen.sprite = Fullscreen;
+            NormalFullscreen.sprite = Fullscreen;
             PlayPause.sprite = Pause;
         }
 
@@ -260,12 +230,12 @@ namespace Unity.VideoHelper
             if (display.IsFullscreen)
             {
                 display.ToNormal();
-                SmallFullscreen.sprite = Fullscreen;
+                NormalFullscreen.sprite = Fullscreen;
             }
             else
             {
                 display.ToFullscreen(gameObject.transform as RectTransform);
-                SmallFullscreen.sprite = Normal;
+                NormalFullscreen.sprite = Normal;
             }
         }
 

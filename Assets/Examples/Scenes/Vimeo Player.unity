@@ -1549,7 +1549,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 0572726cd3aaaab4f87116458b99d872, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  screen: {fileID: 893515469}
+  screen: {fileID: 893515470}
   startAfterPreparation: 1
   videoPlayer: {fileID: 0}
   audioSource: {fileID: 0}
@@ -1581,15 +1581,16 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   Screen: {fileID: 893515469}
   ControlsPanel: {fileID: 925292002}
-  Spinner: {fileID: 0}
+  LoadingIndicator: {fileID: 0}
   Thumbnail: {fileID: 584312251}
   Timeline: {fileID: 264123476}
   Volume: {fileID: 569156904}
   PlayPause: {fileID: 782600203}
   MuteUnmute: {fileID: 0}
-  SmallFullscreen: {fileID: 1657851168}
+  NormalFullscreen: {fileID: 1657851168}
   Current: {fileID: 0}
   Duration: {fileID: 0}
+  targetDisplay: 0
   FullscreenKey: 102
   WindowedKey: 27
   TogglePlayKey: 32
@@ -1599,8 +1600,6 @@ MonoBehaviour:
   Pause: {fileID: 21300000, guid: 000f77e0393a72c4f9420698ba001c6b, type: 3}
   Normal: {fileID: 21300000, guid: 9e25c8e1d987f3342b25ac1d0ff26f5d, type: 3}
   Fullscreen: {fileID: 21300000, guid: 88523171e52812144a37db69fa603f34, type: 3}
-  Mute: {fileID: 0}
-  UnMuted: {fileID: 0}
   Volumes: []
 --- !u!1 &1081214779
 GameObject:
@@ -1853,7 +1852,7 @@ GameObject:
   - component: {fileID: 1657851167}
   - component: {fileID: 1657851166}
   m_Layer: 5
-  m_Name: Window | Fullscreen
+  m_Name: Normal | Fullscreen
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0

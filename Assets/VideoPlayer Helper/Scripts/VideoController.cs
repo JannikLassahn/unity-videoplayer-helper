@@ -15,7 +15,7 @@ namespace Unity.VideoHelper
         #region Fields
 
         [SerializeField]
-        private RectTransform screen;
+        private RawImage screen;
 
         [SerializeField]
         private bool startAfterPreparation = true;
@@ -37,8 +37,6 @@ namespace Unity.VideoHelper
 
         [SerializeField]
         private UnityEvent onFinishedPlaying = new UnityEvent();
-
-        private RawImage screenOutput;
 
         #endregion
 
@@ -109,6 +107,16 @@ namespace Unity.VideoHelper
         }
 
         /// <summary>
+        /// Gets or sets the image to show the video.
+        /// </summary>
+        public RawImage Screen
+        {
+            get { return screen; }
+            set { screen = value; }
+        }
+
+
+        /// <summary>
         /// Fired when the video is prepared for playback.
         /// </summary>
         public UnityEvent OnPrepared
@@ -132,11 +140,6 @@ namespace Unity.VideoHelper
             get { return onFinishedPlaying; }
         }
 
-        internal RectTransform Screen
-        {
-            get { return screen; }
-        }
-
         #endregion
 
         #region Unity methods
@@ -153,8 +156,6 @@ namespace Unity.VideoHelper
 
         private void Start()
         {
-            screenOutput = screen.gameObject.GetOrAddComponent<RawImage>();
-
             if (videoPlayer == null)
             {
                 videoPlayer = gameObject.GetOrAddComponent<VideoPlayer>();
@@ -250,7 +251,7 @@ namespace Unity.VideoHelper
         private void OnPrepareCompleted(VideoPlayer source)
         {
             onPrepared.Invoke();
-            screenOutput.texture = videoPlayer.texture;
+            screen.texture = videoPlayer.texture;
 
 #if VIDEOPLAYER_DEBUG
             Debug.LogWarning("[Video Controller] Depending on your Unity version you might not be able to hear audio in the Editor.");
@@ -275,14 +276,14 @@ namespace Unity.VideoHelper
             if (videoPlayer.audioTrackCount <= 0)
                 return;
 
-            if(audioSource == null)
+            if(audioSource == null && videoPlayer.canSetDirectAudioVolume)
             {
                 videoPlayer.audioOutputMode = VideoAudioOutputMode.Direct;
-                videoPlayer.SetTargetAudioSource(0, audioSource);
             }
             else
             {
                 videoPlayer.audioOutputMode = VideoAudioOutputMode.AudioSource;
+                videoPlayer.SetTargetAudioSource(0, audioSource);
             }
             videoPlayer.controlledAudioTrackCount = 1;
             videoPlayer.EnableAudioTrack(0, true);
@@ -290,9 +291,9 @@ namespace Unity.VideoHelper
 
         private void OnError(VideoPlayer source, string message)
         {
-            #if VIDEOPLAYER_DEBUG
+#if VIDEOPLAYER_DEBUG
             Debug.LogError("[Video Controller] " + message);
-            #endif
+#endif
         }
 
         private void SubscribeToVideoPlayerEvents()
