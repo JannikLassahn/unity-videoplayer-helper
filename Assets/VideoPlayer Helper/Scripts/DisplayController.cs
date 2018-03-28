@@ -92,6 +92,9 @@ namespace Unity.VideoHelper
 
         public void ToNormal()
         {
+            if (target == null)
+                return;
+
             target.SetParent(targetParent);
 
             target.anchorMax = anchorMax;

@@ -21,10 +21,6 @@ namespace Unity.VideoHelper.Animation
         private bool smooth = true;
 
         private float time;
-
-        private float inDuration;
-        private float outDuration;
-
         private Coroutine currentCoroutine;
 
         #endregion
@@ -34,36 +30,36 @@ namespace Unity.VideoHelper.Animation
         /// <summary>
         /// Gets the duration of the <see cref="In"/> animation.
         /// </summary>
-        public float InDuration
-        {
-            get { return inDuration; }
-        }
+        public float InDuration { get; private set; }
 
         /// <summary>
         /// Gets the duration of the <see cref="Out"/> animation.
         /// </summary>
-        public float OutDuration
-        {
-            get { return outDuration; }
-        }
+        public float OutDuration { get; private set; }
 
+        /// <summary>
+        /// Gets or sets the curve for animating a target in.
+        /// </summary>
         public AnimationCurve In
         {
             get { return inAnimation; }
             set
             {
                 inAnimation = value;
-                inDuration = inAnimation.keys[inAnimation.keys.Length - 1].time;
+                InDuration = inAnimation.keys[inAnimation.keys.Length - 1].time;
             }
         }
 
+        /// <summary>
+        /// Gets or sets the curve for animating a target out.
+        /// </summary>
         public AnimationCurve Out
         {
             get { return outAnimation; }
             set
             {
                 outAnimation = value;
-                outDuration = outAnimation.keys[outAnimation.keys.Length - 1].time;
+                OutDuration = outAnimation.keys[outAnimation.keys.Length - 1].time;
             }
         }
 

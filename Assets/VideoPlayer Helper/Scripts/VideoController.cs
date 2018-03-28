@@ -225,6 +225,15 @@ namespace Unity.VideoHelper
         }
 
         /// <summary>
+        /// Sets the playback speed.
+        /// </summary>
+        /// <param name="speed">The speed, e.g. 0.5 for half the normal speed.</param>
+        public void SetPlaybackSpeed(float speed)
+        {
+            videoPlayer.playbackSpeed = speed;
+        }
+
+        /// <summary>
         /// Jumps to the specified time in the video.
         /// </summary>
         /// <param name="time">The normalized time.</param>

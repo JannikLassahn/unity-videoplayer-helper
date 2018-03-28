@@ -25,6 +25,7 @@ namespace Unity.VideoHelper
         private DrivenRectTransformTracker tracker;
         private float previewPosition;
         private float stepSize = 0.05f;
+        private bool isInControl;
         private ITimelineProvider provider;
 
         [SerializeField]
@@ -110,8 +111,6 @@ namespace Unity.VideoHelper
             if(IsActive())
                 UpdateVisuals();
         }
-
-        private bool isInControl;
 
         private void Update()
         {
