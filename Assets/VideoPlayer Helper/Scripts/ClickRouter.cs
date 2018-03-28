@@ -10,7 +10,7 @@ namespace Unity.VideoHelper
         public UnityEvent OnClick = new UnityEvent();
         public UnityEvent OnDoubleClick = new UnityEvent();
 
-        public void OnPointerClick(PointerEventData eventData)
+        public virtual void OnPointerClick(PointerEventData eventData)
         {
             if (eventData.clickCount == 2)
                 OnDoubleClick.Invoke();

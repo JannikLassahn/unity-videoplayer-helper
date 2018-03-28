@@ -36,9 +36,6 @@ namespace Unity.VideoHelper
         private float position;
 
         [SerializeField]
-        private FloatEvent onPositionChanged = new FloatEvent();
-
-        [SerializeField]
         private FloatEvent onSeeked = new FloatEvent();
 
         #endregion
@@ -74,11 +71,6 @@ namespace Unity.VideoHelper
             get { return position; }
             set { SetPosition(value); }
         }
-
-        //public UnityEvent<float> OnPositionChanged
-        //{
-        //    get { return onPositionChanged; }
-        //}
 
         public UnityEvent<float> OnSeeked
         {
@@ -305,7 +297,7 @@ namespace Unity.VideoHelper
                 localCursor -= clickRect.rect.position;
 
                 Position = Mathf.Clamp01((localCursor - handleOffset)[0] / clickRect.rect.size[0]);
-                OnSeeked.Invoke(Position);
+                onSeeked.Invoke(Position);
             }
         }
 
@@ -329,9 +321,6 @@ namespace Unity.VideoHelper
             position = newPosition;
 
             UpdateVisuals();
-
-            //if (sendCallback)
-            //    OnPositionChanged.Invoke(newPosition);
         }
 
         #endregion
@@ -425,10 +414,6 @@ namespace Unity.VideoHelper
 
         public void Rebuild(CanvasUpdate executing)
         {
-#if UNITY_EDITOR
-            if (executing == CanvasUpdate.Prelayout)
-                onPositionChanged.Invoke(position);
-#endif
         }
 
         public void LayoutComplete()

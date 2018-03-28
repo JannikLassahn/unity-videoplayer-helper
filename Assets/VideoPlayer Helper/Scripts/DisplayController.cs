@@ -47,7 +47,7 @@ namespace Unity.VideoHelper
         private GameObject fullscreenCanvas;
         private RectTransform target, targetParent;
 
-        private bool IsAlwaysFullscreen;
+        private bool isAlwaysFullscreen;
         private int targetDisplay;
 
         #endregion
@@ -86,7 +86,7 @@ namespace Unity.VideoHelper
             target.anchorMax = target.offsetMax = Vector2.one;
             target.localScale = Vector3.one;
 
-            IsAlwaysFullscreen = Screen.fullScreen;
+            isAlwaysFullscreen = Screen.fullScreen;
             Screen.fullScreen = true;
         }
 
@@ -105,7 +105,7 @@ namespace Unity.VideoHelper
 
             fullscreenCanvas.SetActive(false);
 
-            Screen.fullScreen = IsAlwaysFullscreen;
+            Screen.fullScreen = isAlwaysFullscreen;
         }
 
         #endregion
@@ -121,7 +121,7 @@ namespace Unity.VideoHelper
             canvas.targetDisplay = targetDisplay;
             
             var scaler = fullscreenCanvas.GetComponent<CanvasScaler>();
-            scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+            scaler.uiScaleMode = CanvasScaler.ScaleMode.ConstantPixelSize;
         }
 
         #endregion

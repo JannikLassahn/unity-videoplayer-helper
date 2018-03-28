@@ -110,6 +110,12 @@ namespace Unity.VideoHelper
             PlayPause.OnClick(ToggleIsPlaying);
             NormalFullscreen.OnClick(ToggleFullscreen);
 
+
+#if UNITY_WEBGL
+            // FIX for not being able to go fullscreen in WebGL. See DirectClickRouter for details.
+            Screen.gameObject.AddComponent<DirectClickRouter>();
+#endif
+
             Screen.OnDoubleClick(ToggleFullscreen);
             Screen.OnClick(ToggleIsPlaying);
 
@@ -138,14 +144,14 @@ namespace Unity.VideoHelper
                 Timeline.Position = controller.NormalizedTime;
         }
 
-        #endregion
+#endregion
 
         public string GetFormattedPosition(float time)
         {
             return PrettyTimeFormat(TimeSpan.FromSeconds(time * controller.Duration));
         }
 
-        #region Private methods
+#region Private methods
 
         private void ToggleMute()
         {
@@ -196,6 +202,7 @@ namespace Unity.VideoHelper
 
         private void OnStartedPlaying()
         {
+            Screen.SetGameObjectActive(true);
             ControlsPanel.SetGameObjectActive(true);
             LoadingIndicator.SetGameObjectActive(false);
 
@@ -258,7 +265,7 @@ namespace Unity.VideoHelper
                 return string.Format(HoursFormat, time.Hours, time.Minutes, time.Seconds);
         }
 
-        #endregion
+#endregion
     }
 }
 
