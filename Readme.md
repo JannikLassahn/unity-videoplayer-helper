@@ -13,7 +13,7 @@ Each sample demonstrates a different approach in using the helper classes (inclu
 
 ## Integration
 
-1. Get the *.unitypackage* from [Releases] (TODO) or clone this repository and create your own.
+1. Get the *.unitypackage* from [Releases] or clone this repository and create your own.
 2. In Unity choose *Assets -> Import Package... -> Custom Package...* and select the appropriate *.unitypackage*
 3. To add a template for the video player click right in the Hierarchy panel and choose Video -> Video Player with Controls
 4. Set your assets. Take a look at the samples for some inspiration.

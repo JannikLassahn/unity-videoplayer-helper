@@ -14,7 +14,7 @@ Controls where content is placed in fullscreen mode. This script stores anchors 
 
 ## AnimationCurveAnimator
 
-A base class for simple in and out animations using `AnimationCurve`s and couroutines.
+A base class for simple in and out animations using `AnimationCurve`s and coroutines.
 
 ## CanvasGroupAnimator
 
