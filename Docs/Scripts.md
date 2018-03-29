@@ -15,13 +15,14 @@ Helps to control Unitys `VideoPlayer` component through wrapper methods and easy
 
 ### Methods
 
-| Name							| Description
-| ----							| -----------
-| `PrepareForUrl(string url)`	| Prepares the video to play the video specified in the URL.
-| `Play()`						| Plays the video or tries to prepare it.
-| `Pause()`						| Pauses the video.
-| `TogglePlayPause()`			| Toggles between play and pause.
-| `Seek(float time)`			| Jumps to the specified time in the video. The parameter must be between 0 and 1, where 0 is the beginning and 1 the end of the video.
+| Name							    | Description
+| ----							    | -----------
+| `PrepareForUrl(string url)`	    | Prepares the video to play the video specified in the URL.
+| `Play()`						    | Plays the video or tries to prepare it.
+| `Pause()`						    | Pauses the video.
+| `TogglePlayPause()`			    | Toggles between play and pause.
+| `Seek(float time)`		        | Jumps to the specified time in the video. The parameter must be between 0 and 1, where 0 is the beginning and 1 the end of the video.
+| `SetPlaybackSpeed(float speed)`   | Sets the speed at which the video is supposed to play. Common values are 0.25, 0.75, 1.0, 1.25 and 1.5.
 
 ### Events
 
